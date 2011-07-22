@@ -5,8 +5,6 @@
 
 import math as m
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt
 
 class Stock:
     def __init__(self, r, sigma, S_0, T, steps):
@@ -188,8 +186,11 @@ class AmericanCall(Option):
 
 
 if __name__ == '__main__':
+    from mpl_toolkits.mplot3d import Axes3D
+    import matplotlib.pyplot as plt
     import sys
 
+    visual   = False
     american = False
     put      = False
     total_t  = 1
@@ -205,25 +206,27 @@ if __name__ == '__main__':
 
         if option == '-am':
             american = True
+        elif option == '-v':
+            visual = True
         elif option == '-p':
             put = True
         elif option == '-n':
-            n_steps = sys.argv[1]
+            n_steps = int(sys.argv[1])
             del sys.argv[1]
         elif option == '-t':
-            total_t = sys.argv[1]
+            total_t = float(sys.argv[1])
             del sys.argv[1]
         elif option == '-r':
-            rate = sys.argv[1]
+            rate = float(sys.argv[1])
             del sys.argv[1]
         elif option == '-sig':
-            sigma = sys.argv[1]
+            sigma = float(sys.argv[1])
             del sys.argv[1]
         elif option == '-s':
-            S_zero = sys.argv[1]
+            S_zero = float(sys.argv[1])
             del sys.argv[1]
         elif option == '-k':
-            strike = sys.argv[1]
+            strike = float(sys.argv[1])
             del sys.argv[1]
         else:
             print sys.argv[0], ': Invalid option', option
@@ -264,28 +267,29 @@ if __name__ == '__main__':
     print outstr
     print "\tr = %f\n\tsigma = %f\n\tS_0 = %f\n\tK = %f" %(rate,sigma,S_zero,strike)
     print "Fair option price V[0,0] = %f" % V.fair_price()
-    
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
-    
-    x = []
-    y = []
-    z = []
-    for i in range(len(times)):
-        for j in range(n_steps):
-            if S(j,i) != 0:
-                x.append(times[i])
-                y.append(S(j,i))
-                z.append(V(j,i))
-    
-    ax.scatter(x, y, 0, zdir='z', c='b', label='S(j,i)')
-    ax.scatter(x, y, z, zdir='z', c='r', label='V(j,i)')
-    ax.mouse_init()
-    ax.set_xlim3d(0,1)
-    ax.set_ylim3d(0,max(y))
-    ax.set_zlim3d(0,max(z))
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Stock Price')
-    ax.set_zlabel('Option Value')
-    
-    plt.show()
+
+    if visual:
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+        
+        x = []
+        y = []
+        z = []
+        for i in range(len(times)):
+            for j in range(n_steps):
+                if S(j,i) != 0:
+                    x.append(times[i])
+                    y.append(S(j,i))
+                    z.append(V(j,i))
+        
+        ax.scatter(x, y, 0, zdir='z', c='b', label='S(j,i)')
+        ax.scatter(x, y, z, zdir='z', c='r', label='V(j,i)')
+        ax.mouse_init()
+        ax.set_xlim3d(0,1)
+        ax.set_ylim3d(0,max(y))
+        ax.set_zlim3d(0,max(z))
+        ax.set_xlabel('Time')
+        ax.set_ylabel('Stock Price')
+        ax.set_zlabel('Option Value')
+        
+        plt.show()
