@@ -8,13 +8,13 @@ import numpy as np
 
 class Stock:
     def __init__(self, r, sigma, S_0, T, steps):
-        self.r = float(r)
+        self.r     = float(r)
         self.sigma = float(sigma)
-        self.S_0 = float(S_0)
-        self.T = float(T)
-        self.steps = steps
-        self.dt = float(T) / float(steps)
-        self.S = np.zeros( (steps, steps) )
+        self.S_0   = float(S_0)
+        self.T     = float(T)
+        self.steps = int(steps)
+        self.dt    = float(T) / float(steps)
+        self.S     = np.zeros( (steps, steps) )
 
     def __call__(self, i, j):
         return self.S[i,j]
@@ -33,8 +33,8 @@ class Stock:
 
     def beta(self):
         e_minus_rdt = m.exp(-self.r * self.dt)
-        e_rdt = 1/e_minus_rdt
-        e_sigma2dt = m.exp( (self.sigma**2) * self.dt )
+        e_rdt       = 1/e_minus_rdt
+        e_sigma2dt  = m.exp( (self.sigma**2) * self.dt )
         return (e_minus_rdt + e_rdt*e_sigma2dt) / 2
 
     def up(self):
