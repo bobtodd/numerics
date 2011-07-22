@@ -87,7 +87,7 @@ class Option:
 
 
 
-class Put(Option):
+class EuropeanPut(Option):
     def __init__(self, strike, underlying):
         Option.__init__(self, strike, underlying)
     
@@ -111,7 +111,7 @@ class Put(Option):
         
 
 
-class Call(Option):
+class EuropeanCall(Option):
     def __init__(self, strike, underlying):
         Option.__init__(self, strike, underlying)
     
@@ -120,27 +120,148 @@ class Call(Option):
         # depending on the price of the underlying
         return max([self.underlying(j, self.underlying.n_steps()-1) - self.strike, 0])
 
-    # etc
+    # evolve backwards
+    def create_tree(self):
+        n_steps = self.n_steps()
+        e_minus_rdt = m.exp(-self.rate() * self.delta_t())
+        p = self.underlying.p()
+        
+        for j in range(n_steps):
+            self.V[j, n_steps-1] = self.payoff(j)
+        
+        for j in range(n_steps-2, -1, -1):
+            for i in range(n_steps-2, -1, -1):
+                self.V[j,i] = e_minus_rdt * ( p*self.V[j+1,i+1] + (1-p)*self.V[j,i+1] )
+
+
+
+
+class AmericanPut(Option):
+    def __init__(self, strike, underlying):
+        Option.__init__(self, strike, underlying)
     
+    def payoff(self, j):
+        # calculate the payout
+        # depending on the price of the underlying
+        return max([self.strike - self.underlying(j, self.underlying.n_steps()-1), 0])
+    
+    # evolve backwards
+    def create_tree(self):
+        n_steps = self.n_steps()
+        e_minus_rdt = m.exp(-self.rate() * self.delta_t())
+        p = self.underlying.p()
+        
+        for j in range(n_steps):
+            self.V[j, n_steps-1] = self.payoff(j)
+        
+        for j in range(n_steps-2, -1, -1):
+            for i in range(n_steps-2, -1, -1):
+                early_exercise   = max([self.underlying(j,i) - self.strike, 0])
+                calculated_value = e_minus_rdt * ( p*self.V[j+1,i+1] + (1-p)*self.V[j,i+1] )
+                self.V[j,i]      = max([early_exercise, calculated_value])
+        
+
+
+class AmericanCall(Option):
+    def __init__(self, strike, underlying):
+        Option.__init__(self, strike, underlying)
+    
+    def payoff(self, j):
+        # calculate the payout
+        # depending on the price of the underlying
+        return max([self.underlying(j, self.underlying.n_steps()-1) - self.strike, 0])
+
+    # evolve backwards
+    def create_tree(self):
+        n_steps = self.n_steps()
+        e_minus_rdt = m.exp(-self.rate() * self.delta_t())
+        p = self.underlying.p()
+        
+        for j in range(n_steps):
+            self.V[j, n_steps-1] = self.payoff(j)
+        
+        for j in range(n_steps-2, -1, -1):
+            for i in range(n_steps-2, -1, -1):
+                early_exercise   = max([self.strike - self.underlying(j,i), 0])
+                calculated_value = e_minus_rdt * ( p*self.V[j+1,i+1] + (1-p)*self.V[j,i+1] )
+                self.V[j,i]      = max([early_exercise, calculated_value])
+
 
 if __name__ == '__main__':
-    total_t = 1
-    n_steps = 64
+    import sys
+
+    american = False
+    put      = False
+    total_t  = 1
+    n_steps  = 64
+    rate     = 0.06
+    sigma    = 0.3
+    S_zero   = 5
+    strike   = 10
+    
+    while len(sys.argv) > 1:
+        option = sys.argv[1]
+        del sys.argv[1]
+
+        if option == '-am':
+            american = True
+        elif option == '-p':
+            put = True
+        elif option == '-n':
+            n_steps = sys.argv[1]
+            del sys.argv[1]
+        elif option == '-t':
+            total_t = sys.argv[1]
+            del sys.argv[1]
+        elif option == '-r':
+            rate = sys.argv[1]
+            del sys.argv[1]
+        elif option == '-sig':
+            sigma = sys.argv[1]
+            del sys.argv[1]
+        elif option == '-s':
+            S_zero = sys.argv[1]
+            del sys.argv[1]
+        elif option == '-k':
+            strike = sys.argv[1]
+            del sys.argv[1]
+        else:
+            print sys.argv[0], ': Invalid option', option
+            sys.exit(1)
+    
     
     times = np.linspace(0, total_t, n_steps)
     
-    rate = 0.06
-    sigma = 0.3
-    S_zero = 5
-    strike = 10
 
     S = Stock(rate, sigma, S_zero, total_t, n_steps)
     S.create_tree()
-    V = Put(strike, S)
+
+    if put:
+        if american:
+            V = AmericanPut(strike, S)
+        else:
+            V = EuropeanPut(strike, S)
+    else:
+        if american:
+            V = AmericanCall(strike, S)
+        else:
+            V = EuropeanCall(strike, S)
+
     V.create_tree()
     
-    
-    print "Put option with"
+    outstr = ""
+    if american:
+        outstr += "American"
+    else:
+        outstr += "European"
+
+    if put:
+        outstr += " put"
+    else:
+        outstr += " call"
+
+    outstr += " option with"
+    print outstr
     print "\tr = %f\n\tsigma = %f\n\tS_0 = %f\n\tK = %f" %(rate,sigma,S_zero,strike)
     print "Fair option price V[0,0] = %f" % V.fair_price()
     
