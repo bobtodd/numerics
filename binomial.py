@@ -8,67 +8,163 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
+class Stock:
+    def __init__(self, r, sigma, S_0, T, steps):
+        self.r = r
+        self.sigma = sigma
+        self.S_0 = S_0
+        self.T = T
+        self.steps = steps
+        self.dt = float(T) / float(steps)
+        self.S = np.zeros( (steps, steps) )
 
-total_t = 1
-n_steps = 32
-dt = float(total_t) / n_steps
+    def __call__(self, i, j):
+        return self.S[i,j]
 
-times = np.linspace(0, total_t, n_steps)
+    def n_steps(self):
+        return self.steps
 
-rate = 0.06
-sigma = 0.3
-S_zero = 5
-strike = 10
+    def rate(self):
+        return self.r
 
-e_minus_rdt = m.exp(-rate*dt)
-e_rdt = 1/e_minus_rdt
-e_sigma2dt = m.exp( (sigma**2) * dt )
+    def delta_t(self):
+        return self.dt
 
-beta = 0.5 * ( e_minus_rdt + e_rdt * e_sigma2dt )
-up = beta + m.sqrt( beta**2 - 1 )
-down = beta - m.sqrt( beta**2 - 1 )
+    def spot(self, i, j):
+        return self.S[i,j]
 
-p = ( e_rdt - down) / (up - down)
+    def beta(self):
+        e_minus_rdt = m.exp(-self.r * self.dt)
+        e_rdt = 1/e_minus_rdt
+        e_sigma2dt = m.exp( (self.sigma**2) * self.dt )
+        return (e_minus_rdt + e_rdt*e_sigma2dt) / 2
 
-S = np.zeros( (n_steps, n_steps) )
-for i in range(n_steps):
-    for j in range(i):
-        k = i - j
-        S[j,i] = S_zero * up**j * down**k
+    def up(self):
+        b = self.beta()
+        return b + m.sqrt(b**2 - 1)
 
-V = np.zeros( (n_steps, n_steps) )
-for j in range(n_steps):
-    V[j, n_steps-1] = max([strike - S[j,n_steps-1], 0])
+    def down(self):
+        b = self.beta()
+        return b - m.sqrt(b**2 - 1)
 
-for j in range(n_steps-2, -1, -1):
-    for i in range(n_steps-2, -1, -1):
-        V[j,i] = e_minus_rdt * ( p*V[j+1,i+1] + (1-p)*V[j,i+1] )
+    def p(self):
+        e_rdt = m.exp(self.r * self.dt)
+        u = self.up()
+        d = self.down()
+        return (e_rdt - d)/(u - d)
+    
+    # the stock needs some way to evolve...
+    def create_tree(self):
+        u = self.up()
+        d = self.down()
+        for i in range(self.steps):
+            for j in range(i):
+                k = i - j
+                self.S[j,i] = self.S_0 * u**j * d**k
+        
 
-print "Put option with"
-print "\tr = %f\n\tsigma = %f\n\tS_0 = %f\n\tK = %f" %(rate,sigma,S_zero,strike)
-print "Fair option price V[0,0] = %f" % V[0,0]
 
-fig = plt.figure()
-ax = fig.gca(projection='3d')
+class Option:
+    def __init__(self, strike, underlying):
+        self.strike = strike
+        self.underlying = underlying
+        self.V = np.zeros( (self.underlying.steps, self.underlying.steps) )
 
-x = []
-y = []
-z = []
-for i in range(len(times)):
-    for j in range(n_steps):
-        if S[j,i] != 0:
-            x.append(times[i])
-            y.append(S[j,i])
-            z.append(V[j,i])
+    def __call__(self, i, j):
+        return self.V[i,j]
 
-ax.scatter(x, y, 0, zdir='z', c='b', label='S[j,i]')
-ax.scatter(x, y, z, zdir='z', c='r', label='V[j,i]')
-ax.mouse_init()
-ax.set_xlim3d(0,1)
-ax.set_ylim3d(0,max(y))
-ax.set_zlim3d(0,max(z))
-ax.set_xlabel('Time')
-ax.set_ylabel('Stock Price')
-ax.set_zlabel('Option Value')
+    def n_steps(self):
+        return self.underlying.n_steps()
 
-plt.show()
+    def rate(self):
+        return self.underlying.rate()
+
+    def delta_t(self):
+        return self.underlying.delta_t()
+
+    def fair_price(self):
+        return self.V[0,0]
+
+
+
+class Put(Option):
+    def __init__(self, strike, underlying):
+        Option.__init__(self, strike, underlying)
+    
+    def payoff(self, j):
+        # calculate the payout
+        # depending on the price of the underlying
+        return max([self.strike - self.underlying(j, self.underlying.n_steps()-1), 0])
+    
+    # evolve backwards
+    def create_tree(self):
+        n_steps = self.n_steps()
+        e_minus_rdt = m.exp(-self.rate() * self.delta_t())
+        p = self.underlying.p()
+        
+        for j in range(n_steps):
+            self.V[j, n_steps-1] = self.payoff(j)
+        
+        for j in range(n_steps-2, -1, -1):
+            for i in range(n_steps-2, -1, -1):
+                self.V[j,i] = e_minus_rdt * ( p*self.V[j+1,i+1] + (1-p)*self.V[j,i+1] )
+        
+
+
+class Call(Option):
+    def __init__(self, strike, underlying):
+        Option.__init__(self, strike, underlying)
+    
+    def payoff(self, j):
+        # calculate the payout
+        # depending on the price of the underlying
+        return max([self.underlying(j, self.underlying.n_steps()-1) - self.strike, 0])
+
+    # etc
+    
+
+if __name__ == '__main__':
+    total_t = 1
+    n_steps = 64
+    
+    times = np.linspace(0, total_t, n_steps)
+    
+    rate = 0.06
+    sigma = 0.3
+    S_zero = 5
+    strike = 10
+
+    S = Stock(rate, sigma, S_zero, total_t, n_steps)
+    S.create_tree()
+    V = Put(strike, S)
+    V.create_tree()
+    
+    
+    print "Put option with"
+    print "\tr = %f\n\tsigma = %f\n\tS_0 = %f\n\tK = %f" %(rate,sigma,S_zero,strike)
+    print "Fair option price V[0,0] = %f" % V.fair_price()
+    
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    
+    x = []
+    y = []
+    z = []
+    for i in range(len(times)):
+        for j in range(n_steps):
+            if S(j,i) != 0:
+                x.append(times[i])
+                y.append(S(j,i))
+                z.append(V(j,i))
+    
+    ax.scatter(x, y, 0, zdir='z', c='b', label='S(j,i)')
+    ax.scatter(x, y, z, zdir='z', c='r', label='V(j,i)')
+    ax.mouse_init()
+    ax.set_xlim3d(0,1)
+    ax.set_ylim3d(0,max(y))
+    ax.set_zlim3d(0,max(z))
+    ax.set_xlabel('Time')
+    ax.set_ylabel('Stock Price')
+    ax.set_zlabel('Option Value')
+    
+    plt.show()
