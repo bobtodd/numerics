@@ -9,10 +9,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def a(y, t):
-    return t*y
+    # a = t * y
+    a = 0.05 * y
+    return a
 
 def b(y, t):
-    return m.sqrt(t) * m.sin(y)
+    # b = m.sqrt(t) * m.sin(y)
+    b = 0.3 * y
+    return b
 
 n_steps = 100
 delta_t = 0.01
@@ -35,14 +39,18 @@ while len(sys.argv) > 1:
         print sys.argv[0], ': Invalid option', option
         sys.exit(1)
 
-times = np.linspace(0, n_steps * delta_t, n_steps)
+t        = np.linspace(0, n_steps * delta_t, n_steps)
+y        = np.zeros(n_steps)
+y_bar    = np.zeros(n_steps)
+y[0]     = x_0
+y_bar[0] = x_0
+for i in range(n_steps-1):
+    dt         = delta_t
+    Z          = np.random.normal(0,1)
+    dW         = Z * m.sqrt(dt)
+    y[i+1]     = y[i] + a(y[i],t[i]) * dt + b(y[i],t[i]) * dW
+    y_bar[i+1] = y_bar[i] + a(y_bar[i],t[i]) * dt
 
-y = [x_0]
-for t in times[1:]:
-    dt = delta_t
-    Z = np.random.normal(0,1)
-    dW = Z * m.sqrt(dt)
-    y.append(y[-1] + a(y[-1],t) * dt + b(y[-1],t) * dW)
-
-plt.plot(times, y)
+plt.plot(t, y, 'b')
+plt.plot(t, y_bar, 'r')
 plt.show()

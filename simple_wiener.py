@@ -24,13 +24,13 @@ while len(sys.argv) > 1:
         print sys.argv[0], ': Invalid option', option
         sys.exit(1)
 
-times = np.linspace(0, n_steps * delta_t, n_steps)
+t    = np.linspace(0, n_steps * delta_t, n_steps)
+W    = np.zeros(n_steps)
+W[0] = 0.0
+for i in range(n_steps-1):
+    dt     = delta_t
+    Z      = np.random.normal(0,1)
+    W[i+1] = W[i] + Z * m.sqrt(dt)
 
-W = [0.0]
-for t in times[1:]:
-    dt = delta_t
-    Z = np.random.normal(0,1)
-    W.append(W[-1] + Z * m.sqrt(dt))
-
-plt.plot(times, list(W))
+plt.plot(t, list(W))
 plt.show()
