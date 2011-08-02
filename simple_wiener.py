@@ -27,10 +27,11 @@ while len(sys.argv) > 1:
 t    = np.linspace(0, n_steps * delta_t, n_steps)
 W    = np.zeros(n_steps)
 W[0] = 0.0
+
 for i in range(n_steps-1):
     dt     = delta_t
     Z      = np.random.normal(0,1)
     W[i+1] = W[i] + Z * m.sqrt(dt)
 
-plt.plot(t, list(W))
+plt.plot(t, W)
 plt.show()

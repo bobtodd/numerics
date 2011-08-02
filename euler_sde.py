@@ -44,6 +44,7 @@ y        = np.zeros(n_steps)
 y_bar    = np.zeros(n_steps)
 y[0]     = x_0
 y_bar[0] = x_0
+
 for i in range(n_steps-1):
     dt         = delta_t
     Z          = np.random.normal(0,1)
