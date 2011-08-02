@@ -10,6 +10,12 @@ class Process:
         self.X       = np.zeros(self.n_steps)
         self.X[0]    = float(X_0)
 
+    def __getitem__(self, i):
+        return self.X[i]
+
+    def __setitem__(self, i, value):
+        self.X[i] = float(value)
+
     def delta_t(self):
         return float(self.T)/float(self.n_steps)
 
@@ -43,12 +49,12 @@ class Euler:
 
         dW = np.zeros(self.S.n_steps)
         for i in range(1, len(dW)):
-            dW[i] = self.W.X[i] - self.W.X[i-1]
+            dW[i] = self.W[i] - self.W[i-1]
         
         for i in range(self.S.n_steps - 1):
-            self.S.X[i+1]  = self.S.X[i]
-            self.S.X[i+1] += self.a(self.S.X[i], t[i]) * dt
-            self.S.X[i+1] += self.b(self.S.X[i], t[i]) * dW[i]
+            self.S[i+1]  = self.S[i]
+            self.S[i+1] += self.a(self.S[i], t[i]) * dt
+            self.S[i+1] += self.b(self.S[i], t[i]) * dW[i]
 
 class DriftRate:
     def __init__(self, stock):
@@ -66,6 +72,8 @@ class Bgbm:
 
 class GBM(Euler):
     def __init__(self, stock, wiener):
+        # Note that, b/c of the form of DriftRate and Bgbm,
+        # if stock starts at 0, it stays at 0
         a = DriftRate(stock)
         b = Bgbm(stock)
         Euler.__init__(self, stock, a, b, wiener)
@@ -80,7 +88,7 @@ if __name__ == '__main__':
     n_steps  = 10000
     rate     = 0.35
     sigma    = 0.3
-    S_zero   = 2
+    S_zero   = 5
     
     while len(sys.argv) > 1:
         option = sys.argv[1]
@@ -119,8 +127,8 @@ if __name__ == '__main__':
     if visual:
         t = np.linspace(0, total_t, n_steps)
 
-        plt.plot(t, S.X, 'b', label='Stock Price')
-        plt.plot(t, W.X, 'r', label='Brownian Motion')
+        plt.plot(t, S[:], 'b', label='Stock Price')
+        plt.plot(t, W[:], 'r', label='Brownian Motion')
         plt.legend()
         
         plt.show()
