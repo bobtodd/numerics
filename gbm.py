@@ -4,17 +4,18 @@ import math as m
 import numpy as np
 
 class Process:
-    def __init__(self, n_steps, total_t):
+    def __init__(self, n_steps, total_t, X_0=0.0):
         self.n_steps = int(n_steps)
         self.T       = float(total_t)
         self.X       = np.zeros(self.n_steps)
+        self.X[0]    = float(X_0)
 
     def delta_t(self):
         return float(self.T)/float(self.n_steps)
 
 class Stock(Process):
-    def __init__(self, n_steps, total_t, rate_rtn, volatility):
-        Process.__init__(self, n_steps, total_t)
+    def __init__(self, n_steps, total_t, X_0, rate_rtn, volatility):
+        Process.__init__(self, n_steps, total_t, X_0)
         self.mu    = rate_rtn
         self.sigma = volatility
 
@@ -25,7 +26,6 @@ class Wiener(Process):
 
     def setup(self):
         dt = self.delta_t()
-        self.X[0] = 0.0
         for i in range(self.n_steps - 1):
             Z = np.random.normal(0,1)
             self.X[i+1] = self.X[i] + Z * m.sqrt(dt)
@@ -39,11 +39,11 @@ class Euler:
     
     def evolve(self):
         dt = self.S.delta_t()
-        t  = np.linspace(0, self.S.total_t, self.S.n_steps)
+        t  = np.linspace(0, self.S.T, self.S.n_steps)
 
         dW = np.zeros(self.S.n_steps)
         for i in range(1, len(dW)):
-            dW[i] = self.W[i] - self.W[i-1]
+            dW[i] = self.W.X[i] - self.W.X[i-1]
         
         for i in range(self.S.n_steps - 1):
             self.S.X[i+1]  = self.S.X[i]
@@ -69,3 +69,58 @@ class GBM(Euler):
         a = DriftRate(stock)
         b = Bgbm(stock)
         Euler.__init__(self, stock, a, b, wiener)
+
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    import sys
+
+    visual   = False
+    total_t  = 1
+    n_steps  = 10000
+    rate     = 0.35
+    sigma    = 0.3
+    S_zero   = 2
+    
+    while len(sys.argv) > 1:
+        option = sys.argv[1]
+        del sys.argv[1]
+
+        if option == '-v':
+            visual = True
+        elif option == '-n':
+            n_steps = int(sys.argv[1])
+            del sys.argv[1]
+        elif option == '-t':
+            total_t = float(sys.argv[1])
+            del sys.argv[1]
+        elif option == '-r':
+            rate = float(sys.argv[1])
+            del sys.argv[1]
+        elif option == '-sig':
+            sigma = float(sys.argv[1])
+            del sys.argv[1]
+        elif option == '-s':
+            S_zero = float(sys.argv[1])
+            del sys.argv[1]
+        else:
+            print sys.argv[0], ': Invalid option', option
+            sys.exit(1)
+    
+        
+
+    S = Stock(n_steps, total_t, S_zero, rate, sigma)
+    W = Wiener(n_steps, total_t)
+
+    G = GBM(S, W)
+    G.evolve()
+
+    
+    if visual:
+        t = np.linspace(0, total_t, n_steps)
+
+        plt.plot(t, S.X, 'b', label='Stock Price')
+        plt.plot(t, W.X, 'r', label='Brownian Motion')
+        plt.legend()
+        
+        plt.show()
