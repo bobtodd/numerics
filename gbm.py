@@ -70,11 +70,24 @@ class Bgbm:
     def __call__(self, x, t):
         return self.sigma * x
 
+class RisklessRate:
+    def __init__(self, interest):
+        self.r = interest
+
+    def __call__(self, x, t):
+        return self.r * x
+
 class GBM(Euler):
     def __init__(self, stock, wiener):
         # Note that, b/c of the form of DriftRate and Bgbm,
         # if stock starts at 0, it stays at 0
         a = DriftRate(stock)
+        b = Bgbm(stock)
+        Euler.__init__(self, stock, a, b, wiener)
+
+class RNBM(Euler):
+    def __init__(self, stock, wiener, interest):
+        a = RisklessRate(interest)
         b = Bgbm(stock)
         Euler.__init__(self, stock, a, b, wiener)
 
@@ -89,6 +102,8 @@ if __name__ == '__main__':
     rate     = 0.35
     sigma    = 0.3
     S_zero   = 5
+    interest = 0.12
+    riskless = False
     
     while len(sys.argv) > 1:
         option = sys.argv[1]
@@ -102,7 +117,7 @@ if __name__ == '__main__':
         elif option == '-t':
             total_t = float(sys.argv[1])
             del sys.argv[1]
-        elif option == '-r':
+        elif option == '-mu':
             rate = float(sys.argv[1])
             del sys.argv[1]
         elif option == '-sig':
@@ -110,6 +125,10 @@ if __name__ == '__main__':
             del sys.argv[1]
         elif option == '-s':
             S_zero = float(sys.argv[1])
+            del sys.argv[1]
+        elif option == '-r':
+            riskless = True
+            interest = float(sys.argv[1])
             del sys.argv[1]
         else:
             print sys.argv[0], ': Invalid option', option
@@ -120,7 +139,11 @@ if __name__ == '__main__':
     S = Stock(n_steps, total_t, S_zero, rate, sigma)
     W = Wiener(n_steps, total_t)
 
-    G = GBM(S, W)
+    if riskless:
+        G = RNBM(S, W, interest)
+    else:
+        G = GBM(S, W)
+    
     G.evolve()
 
     
