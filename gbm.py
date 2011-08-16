@@ -86,6 +86,7 @@ class GBM(Euler):
         Euler.__init__(self, stock, a, b, wiener)
 
 class RNBM(Euler):
+    # Risk-Neutral Brownian Motion
     def __init__(self, stock, wiener, interest):
         a = RisklessRate(interest)
         b = Bgbm(stock)
