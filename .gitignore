@@ -1,0 +1,9 @@
+# Ignore OS files
+.DS_Store
+
+# Ignore compiler output
+*.out
+*.pyc
+
+# Ignore temporary files
+tmp/**/*
