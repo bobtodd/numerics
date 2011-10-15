@@ -186,3 +186,23 @@ if __name__ == '__main__':
     print("\nFinding zero via the Secant Method, with shift condition:")
     for i in range(len(infosecx)):
         print("\tf(%g) = %g" % infosecx[i])
+
+    # To test that duck-typing works:
+    print("\nHere we're checking that the methods treat functors like functions:")
+    
+    def g(x):
+        return 2*x**2 - x
+
+    class Fn:
+        def __init__(self, a, b):
+            self.a = a
+            self.b = b
+
+        def __call__(self, x):
+            return self.a*x**2 + self.b*x
+
+    xg, infog = SecantX(g, 3, 4, store=True)
+    G = Fn(2, -1)
+    xG, infoG = SecantX(G, 3, 4, store=True)
+    print("\tg(%g) = 0" % xg)
+    print("\tG(%g) = 0" % xg)
